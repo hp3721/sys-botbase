@@ -6,3 +6,4 @@ build
 *.nso
 *.nsp
 *.npdm
+sys-botbase/source/.vscode/settings.json

@@ -53,29 +53,36 @@ void __appInit(void)
     rc = fsInitialize();
     if (R_FAILED(rc))
         fatalThrow(rc);
+
     rc = fsdevMountSdmc();
     if (R_FAILED(rc))
         fatalThrow(rc);
+
     rc = timeInitialize();
     if (R_FAILED(rc))
         fatalThrow(rc);
+
     rc = pmdmntInitialize();
-	if (R_FAILED(rc)) {
+	if (R_FAILED(rc))
         fatalThrow(rc);
-	}
+
     rc = ldrDmntInitialize();
-	if (R_FAILED(rc)) {
+	if (R_FAILED(rc))
 		fatalThrow(rc);
-	}
+
     rc = pminfoInitialize();
-	if (R_FAILED(rc)) {
+	if (R_FAILED(rc))
 		fatalThrow(rc);
-	}
+
     rc = socketInitializeDefault();
     if (R_FAILED(rc))
         fatalThrow(rc);
 
     rc = capsscInitialize();
+    if (R_FAILED(rc))
+        fatalThrow(rc);
+
+    rc = hiddbgInitialize();
     if (R_FAILED(rc))
         fatalThrow(rc);
 }
@@ -88,18 +95,17 @@ void __appExit(void)
     audoutExit();
     timeExit();
     socketExit();
+    hiddbgExit();
 }
 
 u64 mainLoopSleepTime = 50;
 bool debugResultCodes = false;
-
 bool echoCommands = false;
 
 int argmain(int argc, char **argv)
 {
     if (argc == 0)
         return 0;
-
 
     //peek <address in hex or dec> <amount of bytes in hex or dec>
     if (!strcmp(argv[0], "peek"))
@@ -232,21 +238,35 @@ int argmain(int argc, char **argv)
     //detachController
     if(!strcmp(argv[0], "detachController"))
     {
-        Result rc = hiddbgDetachHdlsVirtualDevice(controllerHandle);
+        Result rc = hiddbgDetachHdlsVirtualDevice(cHandle);
         if (R_FAILED(rc) && debugResultCodes)
             printf("hiddbgDetachHdlsVirtualDevice: %d\n", rc);
         rc = hiddbgReleaseHdlsWorkBuffer();
         if (R_FAILED(rc) && debugResultCodes)
             printf("hiddbgReleaseHdlsWorkBuffer: %d\n", rc);
-        hiddbgExit();
         bControllerIsInitialised = false;
+    }
+
+    //pressKey
+    if(!strcmp(argv[0], "pressKey"))
+    {
+        if(argc != 2)
+            return 0;
+        
+        HiddbgKeyboardAutoPilotState keyboardState = {0};
+        u64 keys[4];
+        keyboardState.modifiers = 0;
+        keys[0] = parseStringToInt(argv[1]);
+        memcpy(keyboardState.keys, keys, sizeof keys);
+        hiddbgSetKeyboardAutoPilotState(&keyboardState);
+        svcSleepThread(buttonClickSleepTime * 1e+6L);
+        hiddbgUnsetKeyboardAutoPilotState();
     }
 
     //configure <mainLoopSleepTime or buttonClickSleepTime> <time in ms>
     if(!strcmp(argv[0], "configure")){
         if(argc != 3)
             return 0;
-
 
         if(!strcmp(argv[1], "mainLoopSleepTime")){
             u64 time = parseStringToInt(argv[2]);
