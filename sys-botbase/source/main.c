@@ -99,6 +99,7 @@ void __appExit(void)
 }
 
 u64 mainLoopSleepTime = 50;
+u64 keyPressSleepTime = 25;
 bool debugResultCodes = false;
 bool echoCommands = false;
 
@@ -247,23 +248,39 @@ int argmain(int argc, char **argv)
         bControllerIsInitialised = false;
     }
 
-    //pressKey
-    if(!strcmp(argv[0], "pressKey"))
+    //pressKeys <key>* see HidKeyboardKey
+    if(!strcmp(argv[0], "pressKeys"))
     {
-        if(argc != 2)
+        if (argc < 2)
             return 0;
         
+        u64 i;
+        u64 keys[4] = {0};
+        for (i = 1; i < argc; i++)
+        {
+            u8 key = parseStringToInt(argv[i]);
+            if (key < 4 || key > 231)
+                continue;
+            keys[key / 64] |= 1UL << key;
+        }
+
         HiddbgKeyboardAutoPilotState keyboardState = {0};
-        u64 keys[4];
-        keyboardState.modifiers = 0;
-        keys[0] = parseStringToInt(argv[1]);
-        memcpy(keyboardState.keys, keys, sizeof keys);
+        keyboardState.modifiers = 1024UL;
+        memcpy(keyboardState.keys, keys, 4*sizeof(u64));
         hiddbgSetKeyboardAutoPilotState(&keyboardState);
-        svcSleepThread(buttonClickSleepTime * 1e+6L);
+        svcSleepThread(keyPressSleepTime * 1e+6L);
         hiddbgUnsetKeyboardAutoPilotState();
+        
+        // hack fix for allowing the same key press in succession (ex: "a+a") by pressing a different unused key (KBD_MEDIA_CALC) after inital key press
+        // memset(keys, 0, 4*sizeof(u64));
+        // keys[3] = 576460752303423488;
+        // memcpy(keyboardState.keys, keys, 4*sizeof(u64));
+        // hiddbgSetKeyboardAutoPilotState(&keyboardState);
+        // svcSleepThread(15 * 1e+6L);
+        // hiddbgUnsetKeyboardAutoPilotState();
     }
 
-    //configure <mainLoopSleepTime or buttonClickSleepTime> <time in ms>
+    //configure <mainLoopSleepTime, buttonClickSleepTime, or keyPressSleepTime> <time in ms>
     if(!strcmp(argv[0], "configure")){
         if(argc != 3)
             return 0;
@@ -276,6 +293,11 @@ int argmain(int argc, char **argv)
         if(!strcmp(argv[1], "buttonClickSleepTime")){
             u64 time = parseStringToInt(argv[2]);
             buttonClickSleepTime = time;
+        }
+        
+        if(!strcmp(argv[1], "keyPressSleepTime")){
+            u64 time = parseStringToInt(argv[2]);
+            keyPressSleepTime = time;
         }
 
         if(!strcmp(argv[1], "echoCommands")){

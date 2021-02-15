@@ -119,7 +119,7 @@ void initController()
     // taken from switchexamples github
     // Set the controller type to Pro-Controller, and set the npadInterfaceType.
     controllerDevice.deviceType = HidDeviceType_FullKey3;
-    controllerDevice.npadInterfaceType = XcdInterfaceType_Bluetooth;
+    controllerDevice.npadInterfaceType = HidNpadInterfaceType_Bluetooth;
     // Set the controller colors. The grip colors are for Pro-Controller on [9.0.0+].
     controllerDevice.singleColorBody = RGBA8_MAXALPHA(255,255,255);
     controllerDevice.singleColorButtons = RGBA8_MAXALPHA(0,0,0);
